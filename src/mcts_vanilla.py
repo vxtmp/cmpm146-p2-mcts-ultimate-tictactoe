@@ -23,6 +23,12 @@ def traverse_nodes(node: MCTSNode, board: Board, state, bot_identity: int):
         state: The state associated with that node
 
     """
+    while not board.is_ended(state):               # take a state, board checks if terminal.
+        if node.untried_actions:
+            return expand_leaf(node, board, state)
+        else:
+            node = get_best_action(node)
+            state = board.next_state(state, node.parent_action)
     pass
 
 def expand_leaf(node: MCTSNode, board: Board, state):
@@ -38,6 +44,8 @@ def expand_leaf(node: MCTSNode, board: Board, state):
         state: The state associated with that node
 
     """
+    # expand the node by adding a new child node
+
     pass
 
 
@@ -52,6 +60,11 @@ def rollout(board: Board, state):
         state: The terminal game state
 
     """
+    # rollout randomly
+    while not board.is_ended(state):
+        action = choice(board.legal_actions(state))
+        state = board.next_state(state, action)
+    return state
     pass
 
 
@@ -63,10 +76,16 @@ def backpropagate(node: MCTSNode|None, won: bool):
         won:    An indicator of whether the bot won or lost the game.
 
     """
+    # backpropagate the Monte Carlo return value
+    node.visits += 1
+    if won:
+        node.wins += 1
+    if node.parent is not None:
+        backpropagate(node.parent, won)
     pass
 
 def ucb(node: MCTSNode, is_opponent: bool):
-    """ Calcualtes the UCB value for the given node from the perspective of the bot
+    """ Calculates the UCB value for the given node from the perspective of the bot
 
     Args:
         node:   A node.
@@ -110,8 +129,11 @@ def think(board: Board, current_state):
         state = current_state
         node = root_node
 
-        # Do MCTS - This is all you!
-        # ...
+        # Do MCTS
+        node = traverse_nodes(node, board, state, bot_identity) # select
+        state = board.next_state(state, node.parent_action)
+        won = is_win(board, state, bot_identity)
+        backpropagate(node, won)
 
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
