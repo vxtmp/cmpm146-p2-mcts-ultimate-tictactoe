@@ -23,12 +23,15 @@ def traverse_nodes(node: MCTSNode, board: Board, state, bot_identity: int):
         state: The state associated with that node
 
     """
-    while not board.is_ended(state):               # take a state, board checks if terminal.
-        if node.untried_actions:
-            return expand_leaf(node, board, state)
+    current_node = node
+    current_state = state
+    while not board.is_ended(state):
+        if current_node.untried_actions:
+            return expand_leaf(current_node, board, current_state)
         else:
-            node = get_best_action(node)
-            state = board.next_state(state, node.parent_action)
+            best_action = get_best_action(current_node)
+            current_node = current_node.child_nodes[best_action]
+            current_state = board.next_state(current_state, best_action)
     pass
 
 def expand_leaf(node: MCTSNode, board: Board, state):
@@ -153,9 +156,8 @@ def think(board: Board, current_state):
         node = root_node
 
         # Do MCTS
-        node = traverse_nodes(node, board, state, bot_identity) # select
-        
-        node, state = expand_leaf(node, board, state) # expand. returns new node and new state
+        node, state = traverse_nodes(node, board, state, bot_identity) # select
+                                                                       # calls expand
         
         state = rollout(board, state) # rollout
         won = is_win(board, state, bot_identity)
