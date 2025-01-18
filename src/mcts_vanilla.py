@@ -131,9 +131,14 @@ def think(board: Board, current_state):
 
         # Do MCTS
         node = traverse_nodes(node, board, state, bot_identity) # select
+        
+        node = expand_leaf(node, board, state) # expand
         state = board.next_state(state, node.parent_action)
+        
+        state = rollout(board, state) # rollout
         won = is_win(board, state, bot_identity)
-        backpropagate(node, won)
+        
+        backpropagate(node, won) # backpropagate
 
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
