@@ -45,7 +45,11 @@ def expand_leaf(node: MCTSNode, board: Board, state):
 
     """
     # expand the node by adding a new child node
-
+    action = node.untried_actions.pop()
+    new_state = board.next_state(state, action)
+    new_node = MCTSNode(parent=node, parent_action=action, action_list=board.legal_actions(new_state))
+    node.child_nodes[action] = new_node
+    return new_node, new_state
     pass
 
 
@@ -93,7 +97,18 @@ def ucb(node: MCTSNode, is_opponent: bool):
     Returns:
         The value of the UCB function for the given node
     """
-    pass
+    # calculate the UCB value
+    if node.visits == 0:
+        return float('inf')
+    
+    exploration = explore_faction * sqrt(log(node.parent.visits) / node.visits)
+    exploitation = node.wins / node.visits
+    ucb_value = exploitation + exploration
+    
+    if is_opponent:
+        return 1.0 - ucb_value # prefer good opponent moves (lower ucb_value)
+    else:
+        return ucb_value
 
 def get_best_action(root_node: MCTSNode):
     """ Selects the best action from the root node in the MCTS tree
@@ -104,7 +119,15 @@ def get_best_action(root_node: MCTSNode):
         action: The best action from the root node
     
     """
-    pass
+    # choose the child node with best UCB value
+    best_action = None
+    best_value = -1
+    for action, child in root_node.child_nodes.items():
+        value = child.wins / child.visits + explore_faction * sqrt(log(root_node.visits) / child.visits)
+        if value > best_value:
+            best_value = value
+            best_action = action
+    return best_action
 
 def is_win(board: Board, state, identity_of_bot: int):
     # checks if state is a win state for identity_of_bot
@@ -132,8 +155,7 @@ def think(board: Board, current_state):
         # Do MCTS
         node = traverse_nodes(node, board, state, bot_identity) # select
         
-        node = expand_leaf(node, board, state) # expand
-        state = board.next_state(state, node.parent_action)
+        node, state = expand_leaf(node, board, state) # expand. returns new node and new state
         
         state = rollout(board, state) # rollout
         won = is_win(board, state, bot_identity)
