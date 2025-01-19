@@ -58,6 +58,9 @@ for i in range(rounds):
         winner = 2
     print("The %s bot wins this round! (%s)" % (winner, str(final_score)))
     wins[winner] = wins.get(winner, 0) + 1
+    
+    #print score of each player
+    print(dict(wins))
 
 print("")
 print("Final win counts:", dict(wins))
