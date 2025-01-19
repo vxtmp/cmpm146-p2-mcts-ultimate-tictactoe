@@ -27,11 +27,11 @@ def traverse_nodes(node: MCTSNode, board: Board, state, bot_identity: int):
     current_state = state
     
     if board.is_ended(state):
-        return None, current_state
+        return current_node, current_state
     
     # any untried actions left?
     if current_node.untried_actions:
-        return current_node, current_state
+        return current_node, current_state # is leaf node
     
     # 1 if the last action was performed by the opponent, 0 otherwise
     is_opponent = board.current_player(current_state) != bot_identity
@@ -65,7 +65,7 @@ def expand_leaf(node: MCTSNode, board: Board, state):
 
     """
     # expand the node by adding a new child node
-    action = node.untried_actions.pop() # get untried action. remove from list.
+    action = node.untried_actions.pop() # get untried action. remove from node's untried list.
     new_state = board.next_state(state, action)
     new_node = MCTSNode(parent=node, parent_action=action, action_list=board.legal_actions(new_state))
     node.child_nodes[action] = new_node
@@ -83,7 +83,8 @@ def rollout(board: Board, state):
 
     """
     # rollout randomly
-    curr_state = state
+    curr_state = state # duplicate state
+    
     while not board.is_ended(curr_state):
         action = choice(board.legal_actions(curr_state))
         curr_state = board.next_state(curr_state, action)
