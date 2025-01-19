@@ -57,5 +57,5 @@ def think(board, state):
             best_expectation = expectation
             best_move = move
 
-    print("Rollout bot picking %s with expected score %f" % (str(best_move), best_expectation))
+    # print("Rollout bot picking %s with expected score %f" % (str(best_move), best_expectation))
     return best_move

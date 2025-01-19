@@ -4,7 +4,7 @@ from p2_t3 import Board
 from random import choice
 from math import sqrt, log
 
-num_nodes = 100
+num_nodes = 1000
 explore_faction = 2.
 
 def traverse_nodes(node: MCTSNode, board: Board, state, bot_identity: int):
@@ -25,14 +25,26 @@ def traverse_nodes(node: MCTSNode, board: Board, state, bot_identity: int):
     """
     current_node = node
     current_state = state
-    while not board.is_ended(state):
-        if current_node.untried_actions:
-            return expand_leaf(current_node, board, current_state)
-        else:
-            best_action = get_best_action(current_node)
-            current_node = current_node.child_nodes[best_action]
-            current_state = board.next_state(current_state, best_action)
-    pass
+    
+    if board.is_ended(state):
+        return current_node, current_state
+    
+    # any untried actions left?
+    if current_node.untried_actions:
+        return expand_leaf(current_node, board, current_state)
+    
+    # 1 if the last action was performed by the opponent, 0 otherwise
+    is_opponent = board.current_player(current_state) != bot_identity
+    
+    # get best action and expand
+    best_action = get_best_action(current_node, is_opponent)
+    if best_action is None:
+        return current_node, current_state
+    current_state = board.next_state(current_state, best_action)
+    current_node = current_node.child_nodes[best_action]
+    
+    # recurse
+    return traverse_nodes(current_node, board, current_state, bot_identity)
 
 def expand_leaf(node: MCTSNode, board: Board, state):
     """ Adds a new leaf to the tree by creating a new child node for the given node (if it is non-terminal).
@@ -53,8 +65,6 @@ def expand_leaf(node: MCTSNode, board: Board, state):
     new_node = MCTSNode(parent=node, parent_action=action, action_list=board.legal_actions(new_state))
     node.child_nodes[action] = new_node
     return new_node, new_state
-    pass
-
 
 def rollout(board: Board, state):
     """ Given the state of the game, the rollout plays out the remainder randomly.
@@ -103,17 +113,18 @@ def ucb(node: MCTSNode, is_opponent: bool):
     # calculate the UCB value
     if node.visits == 0:
         return float('inf')
-    
-    exploration = explore_faction * sqrt(log(node.parent.visits) / node.visits)
+    exploration = explore_faction * sqrt( 
+                                        log(node.parent.visits) / node.visits 
+                                        )
     exploitation = node.wins / node.visits
-    ucb_value = exploitation + exploration
     
     if is_opponent:
-        return 1.0 - ucb_value # prefer good opponent moves (lower ucb_value)
-    else:
-        return ucb_value
+        exploitation = 1 - exploitation
+        
+    return exploitation + exploration
+        
 
-def get_best_action(root_node: MCTSNode):
+def get_best_action(root_node: MCTSNode, is_opponent: bool = False):
     """ Selects the best action from the root node in the MCTS tree
 
     Args:
@@ -126,7 +137,7 @@ def get_best_action(root_node: MCTSNode):
     best_action = None
     best_value = -1
     for action, child in root_node.child_nodes.items():
-        value = child.wins / child.visits + explore_faction * sqrt(log(root_node.visits) / child.visits)
+        value = ucb (child, is_opponent)
         if value > best_value:
             best_value = value
             best_action = action
@@ -168,5 +179,5 @@ def think(board: Board, current_state):
     # estimated win rate.
     best_action = get_best_action(root_node)
     
-    print(f"Action chosen: {best_action}")
+    # print(f"Action chosen: {best_action}")
     return best_action
