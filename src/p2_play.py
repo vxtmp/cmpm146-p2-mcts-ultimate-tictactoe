@@ -1,6 +1,7 @@
 import sys
 import p2_t3
 import mcts_vanilla
+import mcts_vanilla100
 import mcts_modified
 import random_bot
 import rollout_bot
@@ -21,6 +22,7 @@ players = dict(
     random_bot=random_bot.think,
     rollout_bot=rollout_bot.think,
     mcts_vanilla=mcts_vanilla.think,
+    mcts_v100=mcts_vanilla100.think,
     mcts_modified=mcts_modified.think,
 )
 
