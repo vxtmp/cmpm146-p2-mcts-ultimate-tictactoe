@@ -83,14 +83,18 @@ def rollout(board: Board, state):
         state: The terminal game state
 
     """
-    # rollout randomly
     curr_state = state # duplicate state
+        
+    # RANDOM ROLLOUT ==========================================================
+    # while not board.is_ended(curr_state):
+    #     action = choice(board.legal_actions(curr_state))
+    #     curr_state = board.next_state(curr_state, action)
     
-    #part inspired by ChatGPT
+    # #part inspired by ChatGPT
     while not board.is_ended(curr_state):
         # action = choice(board.legal_actions(curr_state))
         # curr_state = board.next_state(curr_state, action)
-        actions = board.legal_actions(state)
+        actions = board.legal_actions(curr_state)
 
         best_score = float("-inf")
         best_action = None
@@ -104,6 +108,7 @@ def rollout(board: Board, state):
                 best_score = score
                 best_action = act
         action = best_action
+        
         curr_state = board.next_state(curr_state, action)
 
     return curr_state
