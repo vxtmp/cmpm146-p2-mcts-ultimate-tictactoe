@@ -84,12 +84,128 @@ def rollout(board: Board, state):
     """
     # rollout randomly
     curr_state = state # duplicate state
-    
+    #part inspired by ChatGPT
     while not board.is_ended(curr_state):
-        action = choice(board.legal_actions(curr_state))
+        # action = choice(board.legal_actions(curr_state))
+        # curr_state = board.next_state(curr_state, action)
+        actions = board.legal_actions(state)
+
+        best_score = float("-inf")
+        best_action = None
+        for act in actions:
+            score = evaluate_heuristic(board, curr_state, act)
+            if(score > best_score):
+                best_score = score
+                best_action = act
+        action = best_action
         curr_state = board.next_state(curr_state, action)
+
+
     return curr_state
 
+def evaluate_heuristic(board, state, action, bot_id):
+    """
+    Evaluate the value of taking 'action' from 'state' for 'bot_id' (1 or 2).
+    Larger positive values indicate a stronger move for 'bot_id'.
+    """
+
+    # Apply the action to get the resulting state.
+    next_state = board.next_state(state, action)
+    
+    # 1. If this move ends the game, check if it's a win/loss/draw.
+    if board.is_ended(next_state):
+        outcome = board.points_values(next_state)  # e.g. {1: 1, 2: -1} if player 1 wins
+        if outcome[bot_id] == 1:
+            # Bot wins immediately => very high score
+            return 10000.0
+        elif outcome[bot_id] == -1:
+            # Bot loses immediately => very negative
+            return -10000.0
+        else:
+            # Draw => neutral
+            return 0.0
+
+    # 2. Score capturing local boards: compare owned boxes before & after.
+    curr_owned = board.owned_boxes(state)
+    new_owned = board.owned_boxes(next_state)
+
+    # +50 points for each new local board the bot captures with this move,
+    # -50 for each new local board the opponent captures.
+    capture_score = 0.0
+    for loc in new_owned:
+        if curr_owned[loc] == 0 and new_owned[loc] == bot_id:
+            capture_score += 50.0
+        elif curr_owned[loc] == 0 and new_owned[loc] != 0 and new_owned[loc] != bot_id:
+            capture_score -= 50.0
+    
+    # 3. Score macro-board alignment. If capturing a local board helps us form 
+    # a row/col/diag on the macro board, that’s extra valuable.
+    macro_score = score_macro_board(board, next_state, bot_id)
+
+    # 4. (Optional) Score partial progress in each local board. 
+    # e.g., 2 in a row with an empty third cell => +5, blocking opponent => +5, etc.
+    micro_threat_score = score_micro_threats(board, next_state, bot_id)
+
+    # Combine scores into a single value. You can tune weights.
+    score = capture_score + macro_score + micro_threat_score
+    return score
+
+
+def score_macro_board(board, state, bot_id):
+    """
+    Scores how good the 'macro' board (3x3 of local boards) is for 'bot_id'.
+    For instance, +20 for each 2/3 owned local boards in a line, +100 for each 3/3.
+    """
+    owned = board.owned_boxes(state)
+    # owned[(row, col)] in {0, 1, 2} indicates who owns that local board
+
+    # Convert from local board ownership to a 3x3 array for easier checking
+    macro = [[owned[(r, c)] for c in range(3)] for r in range(3)]
+
+    score = 0.0
+    lines = []
+
+    # Rows
+    lines.extend([ (macro[r][0], macro[r][1], macro[r][2]) for r in range(3) ])
+    # Columns
+    lines.extend([ (macro[0][c], macro[1][c], macro[2][c]) for c in range(3) ])
+    # Diagonals
+    lines.append((macro[0][0], macro[1][1], macro[2][2]))
+    lines.append((macro[0][2], macro[1][1], macro[2][0]))
+
+    for line in lines:
+        num_me = line.count(bot_id)
+        num_opp = line.count(3 - bot_id)  # If bot_id=1, opp=2; if bot_id=2, opp=1
+
+        # If the line is still open (the opponent hasn’t fully captured it):
+        if num_opp == 0:
+            if num_me == 2:
+                # 2 out of 3 local boards are mine => good progress
+                score += 20
+            elif num_me == 3:
+                # That might actually be a game-ending scenario, but let's add a big number
+                score += 100
+
+        # Maybe also penalize lines where the opponent has 2
+        if num_me == 0 and num_opp == 2:
+            score -= 20
+
+    return score
+
+
+def score_micro_threats(board, state, bot_id):
+    """
+    Score partial progress in local boards themselves.
+    E.g., +5 for each 2-in-a-row with the 3rd space open,
+    -5 if the opponent has 2-in-a-row. 
+    """
+    # This is more involved, since you'd need to read each local board from 'state'.
+    # The Board class might have a method to retrieve the local boards or the full 9x9 layout.
+    score = 0.0
+    # For demonstration, let's just return 0.0 or show a placeholder approach.
+    return score
+
+#reasonable quick solution without finding a perfect solution
 def backpropagate(node: MCTSNode|None, won: bool):
     """ Navigates the tree from a leaf node to the root, updating the win and visit count of each node along the path.
 
