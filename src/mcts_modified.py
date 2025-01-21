@@ -5,6 +5,7 @@ from random import choice
 from math import sqrt, log
 
 num_nodes = 1000
+rollout_sample_depth = 10
 explore_faction = 2.
 
 def traverse_nodes(node: MCTSNode, board: Board, state, bot_identity: int):
@@ -84,6 +85,7 @@ def rollout(board: Board, state):
     """
     # rollout randomly
     curr_state = state # duplicate state
+    
     #part inspired by ChatGPT
     while not board.is_ended(curr_state):
         # action = choice(board.legal_actions(curr_state))
@@ -92,7 +94,11 @@ def rollout(board: Board, state):
 
         best_score = float("-inf")
         best_action = None
-        for act in actions:
+        
+        # make a loop that loops rollout_sample_depth times
+        rollout_iter = min(rollout_sample_depth, len(actions))
+        for i in range(rollout_iter):
+            act = choice(actions)
             score = evaluate_heuristic(board, curr_state, act)
             if(score > best_score):
                 best_score = score
@@ -100,25 +106,26 @@ def rollout(board: Board, state):
         action = best_action
         curr_state = board.next_state(curr_state, action)
 
-
     return curr_state
 
-def evaluate_heuristic(board, state, action, bot_id):
+def evaluate_heuristic(board, state, action):
     """
     Evaluate the value of taking 'action' from 'state' for 'bot_id' (1 or 2).
     Larger positive values indicate a stronger move for 'bot_id'.
     """
 
+    current_player = board.current_player(state)    
+    
     # Apply the action to get the resulting state.
     next_state = board.next_state(state, action)
     
     # 1. If this move ends the game, check if it's a win/loss/draw.
     if board.is_ended(next_state):
         outcome = board.points_values(next_state)  # e.g. {1: 1, 2: -1} if player 1 wins
-        if outcome[bot_id] == 1:
+        if outcome[current_player] == 1:
             # Bot wins immediately => very high score
             return 10000.0
-        elif outcome[bot_id] == -1:
+        elif outcome[current_player] == -1:
             # Bot loses immediately => very negative
             return -10000.0
         else:
@@ -132,19 +139,19 @@ def evaluate_heuristic(board, state, action, bot_id):
     # +50 points for each new local board the bot captures with this move,
     # -50 for each new local board the opponent captures.
     capture_score = 0.0
-    for loc in new_owned:
-        if curr_owned[loc] == 0 and new_owned[loc] == bot_id:
+    for loc in new_owned: # iterate over each subboard. new_owned or curr_owned is fine.
+        if curr_owned[loc] == 0 and new_owned[loc] == current_player: # curr player capture
             capture_score += 50.0
-        elif curr_owned[loc] == 0 and new_owned[loc] != 0 and new_owned[loc] != bot_id:
+        elif curr_owned[loc] == 0 and new_owned[loc] != 0 and new_owned[loc] != current_player:
             capture_score -= 50.0
     
     # 3. Score macro-board alignment. If capturing a local board helps us form 
     # a row/col/diag on the macro board, that’s extra valuable.
-    macro_score = score_macro_board(board, next_state, bot_id)
+    macro_score = score_macro_board(board, next_state, current_player)
 
     # 4. (Optional) Score partial progress in each local board. 
     # e.g., 2 in a row with an empty third cell => +5, blocking opponent => +5, etc.
-    micro_threat_score = score_micro_threats(board, next_state, bot_id)
+    micro_threat_score = score_micro_threats(board, next_state, current_player)
 
     # Combine scores into a single value. You can tune weights.
     score = capture_score + macro_score + micro_threat_score
