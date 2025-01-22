@@ -3,7 +3,10 @@ from mcts_node import MCTSNode
 from p2_t3 import Board
 from random import choice
 from math import sqrt, log
+from time import time
 
+use_time_budget = True
+time_budget = 1.0
 num_nodes = 1000
 rollout_sample_depth = 10
 explore_faction = 2.
@@ -295,21 +298,39 @@ def think(board: Board, current_state):
     bot_identity = board.current_player(current_state) # 1 or 2
     root_node = MCTSNode(parent=None, parent_action=None, action_list=board.legal_actions(current_state))
 
-    for _ in range(num_nodes):
-        state = current_state
-        node = root_node
+    if use_time_budget:
+        start_time = time()
+        while time() - start_time < time_budget:
+            state = current_state
+            node = root_node
 
-        # Do MCTS
-        node, state = traverse_nodes(node, board, state, bot_identity) # select. uses ucb
-        
-        if node != None:
-            if node.untried_actions:
-                node, state = expand_leaf(node, board, state) # expand
-        
-        state = rollout(board, state) # rollout
-        won = is_win(board, state, bot_identity)
-        
-        backpropagate(node, won) # backpropagate
+            # Do MCTS
+            node, state = traverse_nodes(node, board, state, bot_identity) # select. uses ucb
+            
+            if node != None:
+                if node.untried_actions:
+                    node, state = expand_leaf(node, board, state) # expand
+            
+            state = rollout(board, state) # rollout
+            won = is_win(board, state, bot_identity)
+            
+            backpropagate(node, won) # backpropagate
+    else: # use fixed number of nodes
+        for _ in range(num_nodes):
+            state = current_state
+            node = root_node
+
+            # Do MCTS
+            node, state = traverse_nodes(node, board, state, bot_identity) # select. uses ucb
+            
+            if node != None:
+                if node.untried_actions:
+                    node, state = expand_leaf(node, board, state) # expand
+            
+            state = rollout(board, state) # rollout
+            won = is_win(board, state, bot_identity)
+            
+            backpropagate(node, won) # backpropagate
 
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
