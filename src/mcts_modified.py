@@ -5,7 +5,8 @@ from random import choice
 from math import sqrt, log
 from time import time
 
-use_time_budget = False # True to use time budget, False to use node count budget
+use_time_budget = True # True to use time budget, False to use node count budget
+report_node_count = False
 time_budget = 1.0 # Time allowed to build MCTS tree in seconds. Only used if use_time_budget is True
 num_nodes = 1000
 rollout_sample_depth = 10
@@ -285,6 +286,24 @@ def is_win(board: Board, state, identity_of_bot: int):
     assert outcome is not None, "is_win was called on a non-terminal state"
     return outcome[identity_of_bot] == 1
 
+def count_nodes(node: MCTSNode):
+    """ Traverses the tree and counts the number of nodes in the tree
+
+    Args:
+        node:   A tree node from which the search is traversing.
+
+    Returns:
+        The number of nodes in the tree
+
+    """
+    if not node.child_nodes:
+        return 1
+    else:
+        count = 1
+        for child in node.child_nodes.values():
+            count += count_nodes(child)
+        return count
+
 def think(board: Board, current_state):
     """ Performs MCTS by sampling games and calling the appropriate functions to construct the game tree.
 
@@ -315,7 +334,7 @@ def think(board: Board, current_state):
             won = is_win(board, state, bot_identity)
             
             backpropagate(node, won) # backpropagate
-    else: # use fixed number of nodes
+    elif not use_time_budget: # use fixed number of nodes
         for _ in range(num_nodes):
             state = current_state
             node = root_node
@@ -332,9 +351,11 @@ def think(board: Board, current_state):
             
             backpropagate(node, won) # backpropagate
             
-    # report node count and player ID for debugging
-    print(f"Node count: {num_nodes}, Player ID: {bot_identity}")
-
+    # report node count in the tree and player ID for debugging. Traverse tree to count nodes
+    if report_node_count:
+        nodes_in_tree = 0
+        nodes_in_tree = count_nodes(root_node)    
+        print(f"Node count: {nodes_in_tree}, Player ID: {bot_identity}")
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
     best_action = get_best_action(root_node) # get best action. calculates win rate (not ucb).
