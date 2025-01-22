@@ -5,8 +5,8 @@ from random import choice
 from math import sqrt, log
 from time import time 
 
-use_time_budget = False
-time_budget = 1.0
+use_time_budget = False # True to use time budget, False to use node count budget
+time_budget = 1.0 # Time allowed to build MCTS tree in seconds. Only used if use_time_budget is True
 num_nodes = 900
 explore_faction = 2.
 
@@ -203,6 +203,9 @@ def think(board: Board, current_state):
             won = is_win(board, state, bot_identity)
             
             backpropagate(node, won) # backpropagate
+            
+    # report node count and player ID for debugging
+    print(f"Node count: {num_nodes}, Player ID: {bot_identity}")
 
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
